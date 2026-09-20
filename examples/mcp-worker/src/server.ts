@@ -1,5 +1,7 @@
-import { McpServer } from "@modelcontextprotocol/server";
-import { createMcpHandler } from "agents/mcp/server";
+import {
+  McpServer,
+  createMcpHandler
+} from "@modelcontextprotocol/server";
 import { z } from "zod";
 
 function createServer() {
@@ -29,8 +31,4 @@ function createServer() {
   return server;
 }
 
-export default {
-  fetch(request, env, ctx) {
-    return createMcpHandler(createServer)(request, env, ctx);
-  }
-} satisfies ExportedHandler;
+export default createMcpHandler(createServer);
