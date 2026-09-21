@@ -841,11 +841,12 @@ function createServer(env: Env) {
 export default {
   fetch(
     request: Request,
-    env: Env,
-    ctx: ExecutionContext
+    env: Env
   ) {
-    return createMcpHandler(
+    const handler = createMcpHandler(
       () => createServer(env)
-    )(request, env, ctx);
+    );
+
+    return handler.fetch(request);
   }
 } satisfies ExportedHandler<Env>;
