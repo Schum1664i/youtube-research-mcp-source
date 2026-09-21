@@ -421,12 +421,12 @@ function createServer(env: Env) {
         "Use this instead of search when video IDs " +
         "are already known.",
 
-      inputSchema: {
+      inputSchema: z.object({
         video_ids: z
-          .array(videoIdSchema)
+          .string()
+          .trim()
           .min(1)
-          .max(MAX_VIDEO_IDS)
-      },
+      }),
 
       outputSchema:
         toolOutputSchema,
@@ -502,15 +502,78 @@ function createServer(env: Env) {
         remaining: null
       });
 
+      const parsedIds = video_ids
+        .split(",")
+        .map((id) => id.trim())
+        .filter((id) => id.length > 0);
+
+      const invalidIds = parsedIds.filter(
+        (id) => !videoIdSchema.safeParse(id).success
+      );
+
+      if (invalidIds.length > 0) {
+        return finish({
+          ok: false,
+          data: null,
+          error: {
+            code: "INVALID_VIDEO_ID_FORMAT",
+            category: "INVALID_INPUT",
+            message:
+              "One or more video IDs contain unsupported characters.",
+            upstream_http_status: null,
+            retryable: false
+          },
+          warnings: [],
+          quota: makeQuota(),
+          meta: makeMeta()
+        });
+      }
+
       const ids = [
-        ...new Set(video_ids)
+        ...new Set(parsedIds)
       ];
+
+      if (ids.length === 0) {
+        return finish({
+          ok: false,
+          data: null,
+          error: {
+            code: "NO_VIDEO_IDS",
+            category: "INVALID_INPUT",
+            message:
+              "At least one YouTube video ID is required.",
+            upstream_http_status: null,
+            retryable: false
+          },
+          warnings: [],
+          quota: makeQuota(),
+          meta: makeMeta()
+        });
+      }
+
+      if (ids.length > MAX_VIDEO_IDS) {
+        return finish({
+          ok: false,
+          data: null,
+          error: {
+            code: "TOO_MANY_VIDEO_IDS",
+            category: "INVALID_INPUT",
+            message:
+              `A maximum of ${MAX_VIDEO_IDS} video IDs is allowed per call.`,
+            upstream_http_status: null,
+            retryable: false
+          },
+          warnings: [],
+          quota: makeQuota(),
+          meta: makeMeta()
+        });
+      }
 
       const warnings: string[] = [];
 
       if (
         ids.length !==
-        video_ids.length
+        parsedIds.length
       ) {
         warnings.push(
           "Duplicate video IDs were removed " +
